@@ -5,8 +5,10 @@ CREATE TABLE transacao (
     valor NUMERIC(15,2) NOT NULL,
     tipo VARCHAR(20) NOT NULL,
     conta_id BIGINT NOT NULL,
+    categoria_financeira VARCHAR(50),
     CONSTRAINT fk_transacao_conta FOREIGN KEY (conta_id) REFERENCES conta_corrente(id)
 );
 -- Índices para otimizar consultas por data, conta e categoria
 CREATE INDEX idx_transacao_data ON transacao(data);
 CREATE INDEX idx_transacao_conta ON transacao(conta_id);
+CREATE INDEX idx_transacao_categoria ON transacao(categoria_financeira);

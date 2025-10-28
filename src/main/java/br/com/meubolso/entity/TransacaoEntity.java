@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 
 import jakarta.persistence.*;
+import br.com.meubolso.enums.CategoriaFinanceira;
 
 @Entity
 @Table(name = "transacao")  
@@ -27,6 +28,13 @@ public class TransacaoEntity implements Serializable {
     @Column(name = "tipo", nullable = false, length = 20)
     private String tipo;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "categoria", length = 30)
+    private CategoriaFinanceira categoria;
+
+    @Column(name = "anomesref", length = 10)
+    private String anomesref;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "conta_id", nullable = false)
     private ContaCorrenteEntity contaCorrente;
@@ -42,8 +50,9 @@ public class TransacaoEntity implements Serializable {
 public TransacaoEntity() {
     }
 
-    public TransacaoEntity(Long id, Double valor, String descricao, ContaCorrenteEntity contaCorrente ) {
+    public TransacaoEntity(Long id, LocalDate data, Double valor, String descricao, ContaCorrenteEntity contaCorrente ) {
         this.id = id;
+        this.data = data;
         this.valor = valor;
         this.descricao = descricao;
         this.contaCorrente = contaCorrente;
@@ -84,6 +93,22 @@ public TransacaoEntity() {
 
     public void setContaCorrente(ContaCorrenteEntity contaCorrente) {
         this.contaCorrente = contaCorrente;
+    }
+
+    public CategoriaFinanceira getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(CategoriaFinanceira categoria) {
+        this.categoria = categoria;
+    }
+
+    public String getAnomesref() {
+        return anomesref;
+    }
+
+    public void setAnomesref(String anomesref) {
+        this.anomesref = anomesref;
     }
 
 

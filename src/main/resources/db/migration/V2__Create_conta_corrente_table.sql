@@ -3,6 +3,7 @@ CREATE TABLE conta_corrente (
     banco VARCHAR(100) NOT NULL,
     agencia VARCHAR(20),
     usuario_id BIGINT NOT NULL,
+    numero VARCHAR(20),
     CONSTRAINT fk_conta_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id)
 );
 

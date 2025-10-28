@@ -1,0 +1,2 @@
+ALTER TABLE transacao
+    ADD COLUMN IF NOT EXISTS categoria VARCHAR(30);

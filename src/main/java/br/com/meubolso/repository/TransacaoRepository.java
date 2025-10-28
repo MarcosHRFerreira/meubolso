@@ -1,8 +1,19 @@
 package br.com.meubolso.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import br.com.meubolso.entity.TransacaoEntity;
+import br.com.meubolso.enums.CategoriaFinanceira;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface TransacaoRepository extends JpaRepository<TransacaoEntity, Long>   {
+import java.time.LocalDate;
 
+public interface TransacaoRepository extends JpaRepository<TransacaoEntity, Long> {
+
+    boolean existsByContaCorrente_IdAndDataAndDescricaoAndValorAndTipoAndCategoria(
+            Long contaId,
+            LocalDate data,
+            String descricao,
+            Double valor,
+            String tipo,
+            CategoriaFinanceira categoria
+    );
 }
