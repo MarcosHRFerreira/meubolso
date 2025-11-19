@@ -1,18 +1,5 @@
 package br.com.meubolso.service.impl;
 
-import br.com.meubolso.entity.ContaCorrenteEntity;
-import br.com.meubolso.entity.TransacaoEntity;
-import br.com.meubolso.enums.CategoriaFinanceira;
-import br.com.meubolso.dto.response.ImportacaoResultadoDto;
-import br.com.meubolso.dto.response.LinhaErroDto;
-import br.com.meubolso.dto.response.TransacaoResumoDto;
-import br.com.meubolso.repository.ContaCorrenteRepository;
-import br.com.meubolso.repository.TransacaoRepository;
-import br.com.meubolso.service.ImportaArquivoService;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import jakarta.persistence.EntityNotFoundException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -21,16 +8,38 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import br.com.meubolso.dto.response.ImportacaoResultadoDto;
+import br.com.meubolso.dto.response.LinhaErroDto;
+import br.com.meubolso.dto.response.TransacaoResumoDto;
+import br.com.meubolso.entity.ContaCorrenteEntity;
+import br.com.meubolso.entity.TransacaoEntity;
+import br.com.meubolso.enums.CategoriaFinanceira;
+import br.com.meubolso.mapper.TransacaoMapper;
+import br.com.meubolso.repository.ContaCorrenteRepository;
+import br.com.meubolso.repository.TransacaoRepository;
+import br.com.meubolso.service.ImportaArquivoService;
+import br.com.meubolso.validations.CsvStructureValidator;
+import br.com.meubolso.validations.FileUploadValidator;
+import br.com.meubolso.validations.SanitizationUtils;
+import br.com.meubolso.validations.TransacaoRequestValidator;
+import jakarta.persistence.EntityNotFoundException;
+
 @Service
 public class ImportaArquivoServiceImpl implements ImportaArquivoService {
 
     private final TransacaoRepository transacaoRepository;
     private final ContaCorrenteRepository contaCorrenteRepository;
+    private final TransacaoMapper transacaoMapper;
 
     public ImportaArquivoServiceImpl(TransacaoRepository transacaoRepository,
-                                     ContaCorrenteRepository contaCorrenteRepository) {
+                                     ContaCorrenteRepository contaCorrenteRepository,
+                                     TransacaoMapper transacaoMapper) {
         this.transacaoRepository = transacaoRepository;
         this.contaCorrenteRepository = contaCorrenteRepository;
+        this.transacaoMapper = transacaoMapper;
     }
 
     @Override
@@ -39,19 +48,23 @@ public class ImportaArquivoServiceImpl implements ImportaArquivoService {
                 .orElseThrow(() -> new EntityNotFoundException("ContaCorrente não encontrada: id=" + contaId));
         // validações de titularidade foram removidas do contrato atual
 
+        FileUploadValidator.validateCsvUploadOrThrow(file, categoriaFinanceira);
+        FileUploadValidator.validateMaxLines(file, 50000);
+        if (categoriaFinanceira == CategoriaFinanceira.CARTAOCREDITO) {
+            TransacaoRequestValidator.validateAnomesrefOrThrow(anomesref);
+        }
         try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             List<String> linhas = br.lines().collect(Collectors.toList());
-            java.util.List<TransacaoResumoDto> inseridos = new java.util.ArrayList<>();
+            List<TransacaoResumoDto> inseridos = new java.util.ArrayList<>();
             java.util.List<LinhaErroDto> erros = new java.util.ArrayList<>();
             int index = 0;
             for (String linha : linhas) {
                 index++;
                 if (linha == null) continue;
                 String trimmed = linha.trim();
-                // Remove BOM se presente e pula cabecalho conhecido (ex.: "data,lançamento,valor" ou "data;lançamento;valor")
+                // Remove BOM e pula cabeçalho conhecido
                 String normalized = trimmed.replace("\uFEFF", "");
-                String lower = normalized.toLowerCase();
-                if (lower.startsWith("data,") || lower.startsWith("data;")) {
+                if (CsvStructureValidator.isHeaderLine(normalized)) {
                     continue;
                 }
                 if (trimmed.isEmpty()) continue;
@@ -86,16 +99,7 @@ public class ImportaArquivoServiceImpl implements ImportaArquivoService {
                             );
                     if (!existe) {
                         TransacaoEntity salvo = transacaoRepository.save(entity);
-                        inseridos.add(new TransacaoResumoDto(
-                                salvo.getId(),
-                                conta.getId(),
-                                salvo.getData(),
-                                salvo.getDescricao(),
-                                salvo.getValor(),
-                                salvo.getTipo(),
-                                salvo.getCategoria(),
-                                salvo.getAnomesref()
-                        ));
+                        inseridos.add(transacaoMapper.toResumoDto(salvo, conta.getId()));
                     } else {
                         erros.add(new LinhaErroDto(index, trimmed, "duplicado"));
                     }
@@ -121,7 +125,7 @@ public class ImportaArquivoServiceImpl implements ImportaArquivoService {
             if (valor != null) valor = Math.abs(valor);
             TransacaoEntity t = new TransacaoEntity();
             t.setData(data);
-            t.setDescricao(descricao);
+            t.setDescricao(SanitizationUtils.sanitizeDescription(descricao));
             t.setValor(valor);
             t.setTipo(negativo ? "DEBITO" : "CREDITO");
             return t;
@@ -144,7 +148,7 @@ public class ImportaArquivoServiceImpl implements ImportaArquivoService {
             }
             TransacaoEntity t = new TransacaoEntity();
             t.setData(data);
-            t.setDescricao(descricao);
+            t.setDescricao(SanitizationUtils.sanitizeDescription(descricao));
             t.setValor(valor);
             t.setTipo("DEBITO");
             return t;

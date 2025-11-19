@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import br.com.meubolso.exception.ErrorMessages;
+import br.com.meubolso.exception.DuplicateTransactionException;
 
 @RestControllerAdvice
 @Hidden
@@ -56,6 +57,15 @@ public class RestExceptionHandler {
         body.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(DuplicateTransactionException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicate(DuplicateTransactionException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     private ResponseEntity<Map<String, Object>> buildValidationErrorResponse(List<FieldError> fieldErrors, String message) {

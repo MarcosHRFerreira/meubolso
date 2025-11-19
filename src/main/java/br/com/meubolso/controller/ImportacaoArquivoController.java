@@ -2,13 +2,10 @@ package br.com.meubolso.controller;
 
 import br.com.meubolso.enums.CategoriaFinanceira;
 import br.com.meubolso.service.ImportaArquivoService;
-import br.com.meubolso.validations.TransacaoRequestValidator;
-import jakarta.validation.constraints.NotNull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -21,7 +18,6 @@ import br.com.meubolso.dto.response.ImportacaoResultadoDto;
 import org.springframework.web.multipart.MultipartFile;
 
 
-@Validated
 @RestController
 @RequestMapping("/importacao-arquivo")
 @Tag(name = "Importação de Arquivos", description = "Endpoints para importar transações por arquivo")
@@ -37,15 +33,12 @@ public class ImportacaoArquivoController {
     @PostMapping(value = "/carga", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Importa um arquivo de transações", description = "Recebe um arquivo CSV e importa as transações para a conta informada conforme a categoria financeira.")
     public ResponseEntity<ImportacaoResultadoDto> carga(
-            @RequestPart("file") @NotNull org.springframework.web.multipart.MultipartFile file,
-            @RequestParam("tipo") @NotNull br.com.meubolso.enums.CategoriaFinanceira tipo,
-            @RequestParam("contaId") @NotNull Long contaId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("tipo") CategoriaFinanceira tipo,
+            @RequestParam("contaId") Long contaId,
             @RequestParam(name = "anomesref", required = false) String anomesref
     ) {
         logger.info("Importação única: contaId={}, tipo={}", contaId, tipo);
-        if (tipo == CategoriaFinanceira.CARTAOCREDITO) {
-            TransacaoRequestValidator.validateAnomesrefOrThrow(anomesref);
-        }
         ImportacaoResultadoDto resultado = importaArquivoService.importar(
                 file,
                 contaId,
